@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import sys
+import hashlib
 
 import beaker.middleware
 import bottle
@@ -55,6 +56,12 @@ def create_user():
     cur.commit()
     pass
 
+def hash_password(password):
+    salt = os.urandom(32)
+    key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
+    storage = salt + key 
+    return storage
+
 def check_credentials():
     pass
 
@@ -82,44 +89,53 @@ def index():
         return 'You are logged in'
     redirect('/login')
 
-@route('/login')
-def login(db):
+@get('/login')
+def login():
     if request.session.get("logged_in"):
         redirect('/')
     return template("login")
-    #request.session['logged_in'] = True
-    #db.execute('INSERT INTO users (User,Password) VALUES("TOTO","TEST")')
-    #redirect('/')
+
+@post('/login')
+def do_login(db):
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    try:
+        row = db.execute("SELECT * from users where User=?",[username]).fetchone()
+    except sqlite3.Error as e:
+        print(e)
+        return HTTPError(500, "Internal Error")
+    if row:
+        hash=row[2]
+        salt=hash[:32]
+        db_password =hash[32:]
+        hashed_form_password = hashlib.pbkdf2_hmac('sha256',password.encode('utf-8'), salt, 100000)
+        if db_password == hashed_form_password:
+            request.session['logged_in'] = True
+            redirect("/")
+        else:
+            return HTTPError(500, "User or password incorrect")
+    else:
+        return HTTPError(500, "User or password incorrect")
+    
 
 @get('/register')
 def register():
     if request.session.get("logged_in"):
         redirect('/')
     return template("register")
-    #request.session['logged_in'] = True
-    #db.execute('INSERT INTO users (User,Password) VALUES("TOTO","TEST")')
-    #redirect('/')
+
 
 @post('/register')
 def do_register(db):
     username = request.forms.get('username')
     password = request.forms.get('password')
-    print(username)
-    print(password)
+    hash=hash_password(password)
     try:
-        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,password))
+        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
         redirect('/')
     except sqlite3.Error as e:
         return HTTPError(500, e)
 
-
-@route('/list/users')
-def index(db):
-    if request.session.get("logged_in"):
-        row = db.execute('SELECT * from users').fetchone()
-        if row:
-            return template('showitem', page=row)
-        return HTTPError(404, "Page not found")
 
 
 # Start app
