@@ -22,11 +22,11 @@
             </div>
         </nav>
         <!-- Header-->
-        <header class="py-5" style="background: rgb(161,34,167);
+        <header class="py-3" style="background: rgb(161,34,167);
         background: linear-gradient(90deg, rgba(161,34,167,1) 0%, rgba(208,29,72,1) 50%, rgba(0,212,255,1) 100%);">
             <div class="container px-4 px-lg-5 my-5">
                 <div class="text-center text-white">
-                    <h1 class="display-4 fw-bolder">Share your best songs</h1>
+                    <h1 class="display-4 fw-bolder">{{username}}</h1>
                 </div>
             </div>
         </header>

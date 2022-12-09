@@ -86,7 +86,14 @@ def setup_request():
 @get('/')
 def index():
     if request.session.get("logged_in"):
-        return 'You are logged in'
+        return template("index")
+    redirect('/login')
+
+@get('/profile')
+def index():
+    if request.session.get("logged_in"):
+        username=request.session.get("username")
+        return template("profile", username=username)
     redirect('/login')
 
 @get('/profile/:user')
@@ -123,6 +130,7 @@ def do_login(db):
         hashed_form_password = hashlib.pbkdf2_hmac('sha256',password.encode('utf-8'), salt, 100000)
         if db_password == hashed_form_password:
             request.session['logged_in'] = True
+            request.session['username'] = username
             redirect("/")
         else:
             return HTTPError(500, "User or password incorrect")
