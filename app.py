@@ -5,7 +5,7 @@ import hashlib
 
 import beaker.middleware
 import bottle
-from bottle import route, hook, request, redirect, template, HTTPError, get, post, delete
+from bottle import route, hook, request, redirect, template, HTTPError, get, post, static_file
 import bottle.ext.sqlite
 
 # CONSTANTS
@@ -83,12 +83,21 @@ def setup_request():
     request.session = request.environ['beaker.session']
 
 # ROUTES
+# JS #
+@route('/static/<filepath:path>')
+def server_static(filepath):
+    return static_file(filepath, root='./static/')
+##
+
+# Index #
 @get('/')
 def index():
     if request.session.get("logged_in"):
         return template("index")
     redirect('/login')
+##
 
+# Profile #
 @get('/profile')
 def index():
     if request.session.get("logged_in"):
@@ -101,13 +110,51 @@ def index():
     if request.session.get("logged_in"):
         return 'You are logged in'
     redirect('/login')
+##
 
-@get('/list/:user/:name')
+# Lists Reading #
+@get('/lists')
+def index(db):
+    if request.session.get("logged_in"):
+        id=request.session.get("id")
+        username=request.session.get("username")
+        lists = db.execute("SELECT * from list where owner=?",[id]).fetchall()
+        return template("lists", lists=lists, username=username)
+    redirect('/login')
+
+@get('/lists/:user/:name')
 def index():
     if request.session.get("logged_in"):
         return 'You are logged in'
     redirect('/login')
+##
 
+# LIST Creation / Deletion #
+@get('/list')
+def add_list(db):
+    if request.session.get("logged_in"):
+        id=request.session.get("id")
+        try:
+            db.execute('INSERT INTO list (owner,name) VALUES(?,"test")',[id])
+        except sqlite3.Error as e:
+            return HTTPError(500, e)
+    else:
+        return HTTPError(500, "Not logged in")
+
+
+@post('/list/delete/:id')
+def delete_list(id,db):
+    if request.session.get("logged_in"):
+        owner=request.session.get("id")
+        try:
+            db.execute('DELETE FROM list where owner = ? and id = ?',(owner,id))
+        except sqlite3.Error as e:
+            return HTTPError(500, e)
+    else:
+        return HTTPError(500, "Not logged in")
+##
+
+# Login #
 @get('/login')
 def login():
     if request.session.get("logged_in"):
@@ -119,25 +166,28 @@ def do_login(db):
     username = request.forms.get('username')
     password = request.forms.get('password')
     try:
-        row = db.execute("SELECT * from users where User=?",[username]).fetchone()
+        row = db.execute("SELECT * from users where user=?",[username]).fetchone()
     except sqlite3.Error as e:
         print(e)
         return HTTPError(500, "Internal Error")
     if row:
         hash=row[2]
+        id=row[0]
         salt=hash[:32]
         db_password =hash[32:]
         hashed_form_password = hashlib.pbkdf2_hmac('sha256',password.encode('utf-8'), salt, 100000)
         if db_password == hashed_form_password:
             request.session['logged_in'] = True
             request.session['username'] = username
+            request.session['id'] = id
             redirect("/")
         else:
             return HTTPError(500, "User or password incorrect")
     else:
         return HTTPError(500, "User or password incorrect")
-    
+##
 
+# User reg #
 @get('/register')
 def register():
     if request.session.get("logged_in"):
@@ -151,11 +201,13 @@ def do_register(db):
     password = request.forms.get('password')
     hash=hash_password(password)
     try:
-        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
+        db.execute('INSERT INTO users (user,password) VALUES(?,?)',(username,hash))
         redirect('/')
     except sqlite3.Error as e:
         return HTTPError(500, e)
+##
 
+# Friends #
 @post('/friend')
 def add_friend(db):
     username = request.forms.get('username')
@@ -166,7 +218,7 @@ def add_friend(db):
     except sqlite3.Error as e:
         return HTTPError(500, e)
 
-@delete('/friend')
+@post('/friend/delete/:id1/:id2')
 def delete_friend(db):
     username = request.forms.get('username')
     password = request.forms.get('password')
@@ -175,7 +227,9 @@ def delete_friend(db):
         db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
     except sqlite3.Error as e:
         return HTTPError(500, e)
+##
 
+# Entries #
 @post('/entry')
 def add_entry(db):
     username = request.forms.get('username')
@@ -186,7 +240,7 @@ def add_entry(db):
     except sqlite3.Error as e:
         return HTTPError(500, e)
 
-@delete('/entry')
+@post('/entry')
 def delete_entry(db):
     username = request.forms.get('username')
     password = request.forms.get('password')
@@ -195,27 +249,9 @@ def delete_entry(db):
         db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
     except sqlite3.Error as e:
         return HTTPError(500, e)
+##
 
-@post('/list')
-def add_list(db):
-    username = request.forms.get('username')
-    password = request.forms.get('password')
-    hash=hash_password(password)
-    try:
-        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
-    except sqlite3.Error as e:
-        return HTTPError(500, e)
-
-@delete('/list')
-def delete_list(db):
-    username = request.forms.get('username')
-    password = request.forms.get('password')
-    hash=hash_password(password)
-    try:
-        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
-    except sqlite3.Error as e:
-        return HTTPError(500, e)
-
+# Listens #
 @post('/listening')
 def add_listening(db):
     username = request.forms.get('username')
@@ -226,7 +262,7 @@ def add_listening(db):
     except sqlite3.Error as e:
         return HTTPError(500, e)
 
-@delete('/listening')
+@post('/listening')
 def delete_listening(db):
     username = request.forms.get('username')
     password = request.forms.get('password')
@@ -235,5 +271,6 @@ def delete_listening(db):
         db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
     except sqlite3.Error as e:
         return HTTPError(500, e)
+##
 # Start app
-bottle.run(app=app, host='0.0.0.0', port=8080, debug=True)
+bottle.run(app=app, host='0.0.0.0', port=8080, debug=True, reloader=True)
