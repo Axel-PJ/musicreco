@@ -5,12 +5,12 @@ import hashlib
 
 import beaker.middleware
 import bottle
-from bottle import route, hook, request, redirect, template, HTTPError, get, post
+from bottle import route, hook, request, redirect, template, HTTPError, get, post, delete
 import bottle.ext.sqlite
 
 # CONSTANTS
 keys=["MUSICRECO_DB_PATH"]
-tables=["users"]
+tables=["users","friendships","list","entry","has_listened"]
 # FUNCTIONS
 def check_env():
     try:
@@ -83,7 +83,19 @@ def setup_request():
     request.session = request.environ['beaker.session']
 
 # ROUTES
-@route('/')
+@get('/')
+def index():
+    if request.session.get("logged_in"):
+        return 'You are logged in'
+    redirect('/login')
+
+@get('/profile/:user')
+def index():
+    if request.session.get("logged_in"):
+        return 'You are logged in'
+    redirect('/login')
+
+@get('/list/:user/:name')
 def index():
     if request.session.get("logged_in"):
         return 'You are logged in'
@@ -136,7 +148,84 @@ def do_register(db):
     except sqlite3.Error as e:
         return HTTPError(500, e)
 
+@post('/friend')
+def add_friend(db):
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    hash=hash_password(password)
+    try:
+        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
+    except sqlite3.Error as e:
+        return HTTPError(500, e)
 
+@delete('/friend')
+def delete_friend(db):
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    hash=hash_password(password)
+    try:
+        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
+    except sqlite3.Error as e:
+        return HTTPError(500, e)
 
+@post('/entry')
+def add_entry(db):
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    hash=hash_password(password)
+    try:
+        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
+    except sqlite3.Error as e:
+        return HTTPError(500, e)
+
+@delete('/entry')
+def delete_entry(db):
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    hash=hash_password(password)
+    try:
+        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
+    except sqlite3.Error as e:
+        return HTTPError(500, e)
+
+@post('/list')
+def add_list(db):
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    hash=hash_password(password)
+    try:
+        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
+    except sqlite3.Error as e:
+        return HTTPError(500, e)
+
+@delete('/list')
+def delete_list(db):
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    hash=hash_password(password)
+    try:
+        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
+    except sqlite3.Error as e:
+        return HTTPError(500, e)
+
+@post('/listening')
+def add_listening(db):
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    hash=hash_password(password)
+    try:
+        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
+    except sqlite3.Error as e:
+        return HTTPError(500, e)
+
+@delete('/listening')
+def delete_listening(db):
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+    hash=hash_password(password)
+    try:
+        db.execute('INSERT INTO users (User,Password) VALUES(?,?)',(username,hash))
+    except sqlite3.Error as e:
+        return HTTPError(500, e)
 # Start app
 bottle.run(app=app, host='0.0.0.0', port=8080, debug=True)
