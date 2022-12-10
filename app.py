@@ -31,7 +31,7 @@ def check_model():
             conn.close()
             create_model()
             return
-        print("[INFO] MODEL FOUND")
+    print("[INFO] MODEL FOUND")
 
 def create_model():
     conn=sqlite3.connect(os.environ["MUSICRECO_DB_PATH"])
@@ -61,9 +61,6 @@ def hash_password(password):
     key = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100000)
     storage = salt + key 
     return storage
-
-def check_credentials():
-    pass
 
 # STARTUP
 session_opts = {
